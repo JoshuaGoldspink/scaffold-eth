@@ -35,6 +35,7 @@ import {
 import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
 import { Transactor } from "./helpers";
 
+
 // contracts
 import externalContracts from "./contracts/external_contracts";
 import deployedContracts from "./contracts/hardhat_contracts.json";
@@ -489,7 +490,17 @@ function App(props) {
   const sellTokensEvents = useEventListener(readContracts, "Vendor", "SellTokens", localProvider, 1);
   console.log("📟 sellTokensEvents:", sellTokensEvents);
 
+  const burnTokensEvents = useEventListener(readContracts, "Vendor", "BurnTokens", localProvider, 1);
+  console.log("📟 burnTokensEvents:", burnTokensEvents);
+
+  const mintTokensEvents = useEventListener(readContracts, "YourToken", "MintTokens", localProvider, 1);
+  console.log("📟 mintTokensEvents:", mintTokensEvents);
+
   const [tokenBuyAmount, setTokenBuyAmount] = useState({
+    valid: false,
+    value: ''
+  });
+  const [tokenMintAmount, setTokenMintAmount] = useState({
     valid: false,
     value: ''
   });
@@ -519,12 +530,15 @@ function App(props) {
   const [tokenSendAmount, setTokenSendAmount] = useState();
 
   const [buying, setBuying] = useState();
+  const [minting, setMinting] = useState();
 
   let transferDisplay = "";
+  let burnDisplay = "";
+  
   if (yourTokenBalance) {
     transferDisplay = (
       <div style={{ padding: 8, marginTop: 32, width: 420, margin: "auto" }}>
-        <Card title="Transfer tokens">
+        <Card title="Transfer Credits">
           <div>
             <div style={{ padding: 8 }}>
               <AddressInput
@@ -537,7 +551,7 @@ function App(props) {
             <div style={{ padding: 8 }}>
               <Input
                 style={{ textAlign: "center" }}
-                placeholder={"amount of tokens to send"}
+                placeholder={"amount of credits to send"}
                 value={tokenSendAmount}
                 onChange={e => {
                   setTokenSendAmount(e.target.value);
@@ -554,12 +568,46 @@ function App(props) {
                 );
               }}
             >
-              Send Tokens
+              Send Credits
             </Button>
           </div>
         </Card>
       </div>
     );
+            // start of burn tokens UI
+      burnDisplay = (
+        <div style={{ padding: 8, marginTop: 32, width: 420, margin: "auto" }}>
+          <Card title="Burn Credits">
+            <div>
+           
+              <div style={{ padding: 8 }}>
+                <Input
+                  style={{ textAlign: "center" }}
+                  placeholder={"amount of credits to burn"}
+                  value={tokenSendAmount}
+                  onChange={e => {
+                    setTokenSendAmount(e.target.value);
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ padding: 8 }}>
+              <Button
+                type={"primary"}
+                onClick={() => {
+                  tx(
+                    //writeContracts.YourToken.transfer("0x0000000000000000000000000000000000000001", ethers.utils.parseEther("" + tokenSendAmount)),
+                    writeContracts.Vendor.burn(ethers.utils.parseEther("" + tokenSendAmount)),
+                  );
+                }}
+              >
+                Burn Credits
+              </Button>
+            </div>
+          </Card>
+        </div>
+      );
+
   }
 
   return (
@@ -594,21 +642,22 @@ function App(props) {
         <Switch>
           <Route exact path="/">
             <div style={{ padding: 8, marginTop: 32, width: 300, margin: "auto" }}>
-              <Card title="Your Tokens" extra={<a href="#">code</a>}>
+              <Card title="Your Credits" extra={<a href="#">code</a>}>
                 <div style={{ padding: 8 }}>
                   <Balance balance={yourTokenBalance} fontSize={64} />
                 </div>
               </Card>
             </div>
             {transferDisplay}
+            <Divider/>BUYER Display<Divider/>
             <Divider />
             <div style={{ padding: 8, marginTop: 32, width: 300, margin: "auto" }}>
-              <Card title="Buy Tokens" extra={<a href="#">code</a>}>
-                <div style={{ padding: 8 }}>{tokensPerEth && tokensPerEth.toNumber()} tokens per ETH</div>
+              <Card title="Buy Credits" extra={<a href="#">code</a>}>
+                <div style={{ padding: 8 }}>{tokensPerEth && tokensPerEth.toNumber()} credits per ETH</div>
                 <div style={{ padding: 8 }}>
                   <Input
                     style={{ textAlign: "center" }}
-                    placeholder={"amount of tokens to buy"}
+                    placeholder={"amount of credits to buy"}
                     value={tokenBuyAmount.value}
                     onChange={e => {
                       const newValue = e.target.value.startsWith(".") ? "0." : e.target.value;
@@ -633,25 +682,60 @@ function App(props) {
                     }}
                     disabled={!tokenBuyAmount.valid}
                   >
-                    Buy Tokens
+                    Buy Credits
                   </Button>
                 </div>
               </Card>
             </div>
+            {burnDisplay}
+
+            <div style={{ width: 500, margin: "auto", marginTop: 64 }}>
+              <div>Buy Credits Events:</div>
+              <List
+                dataSource={buyTokensEvents}
+                renderItem={item => {
+                  return (
+                    <List.Item key={item.blockNumber + item.blockHash}>
+                      <Address value={item.args[0]} ensProvider={mainnetProvider} fontSize={16} /> paid
+                      <Balance balance={item.args[1]} />
+                      ETH to get
+                      <Balance balance={item.args[2]} />
+                      Carbon Credits
+                    </List.Item>
+                  );
+                }}
+              />
+            </div>
+            <div style={{ width: 500, margin: "auto", marginTop: 64 }}>
+              <div>Burn Credits Events:</div>
+              <List
+                dataSource={burnTokensEvents}
+                renderItem={item => {
+                  return (
+                    <List.Item key={item.blockNumber + item.blockHash}>
+                      <Address value={item.args[0]} ensProvider={mainnetProvider} fontSize={16} /> burned
+                      <Balance balance={item.args[1]} />
+                      Credits
+                    </List.Item>
+                  );
+                }}
+              />
+            </div>
+             
           
             
             
             {/*Extra UI for buying the tokens back from the user using "approve" and "sellTokens"*/}
-
+            <Divider/>SELLER Display<Divider/>
             <Divider />
             <div style={{ padding: 8, marginTop: 32, width: 300, margin: "auto" }}>
-              <Card title="Sell Tokens">
+              <Card title="Sell Credits">
                 <div style={{ padding: 8 }}>{tokensPerEth && tokensPerEth.toNumber()} tokens per ETH</div>
 
                 <div style={{ padding: 8 }}>
                   <Input
                     style={{ textAlign: "center" }}
-                    placeholder={"amount of tokens to sell"}
+                    placeholder={"amount of credits to sell"}
                     value={tokenSellAmount.value}
                     onChange={e => {
                       const newValue = e.target.value.startsWith(".") ? "0." : e.target.value;
@@ -671,7 +755,7 @@ function App(props) {
                       disabled={true}
                       type={"primary"}
                     >
-                      Approve Tokens
+                      Approve Credits
                     </Button>
                     <Button
                       type={"primary"}
@@ -684,7 +768,7 @@ function App(props) {
                       }}
                       disabled={!tokenSellAmount.valid}
                     >
-                      Sell Tokens
+                      Sell Credits
                     </Button>
                   </div>
                   :
@@ -704,13 +788,13 @@ function App(props) {
                       }}
                       disabled={!tokenSellAmount.valid}
                       >
-                      Approve Tokens
+                      Approve Credits
                     </Button>
                     <Button
                       disabled={true}
                       type={"primary"}
                     >
-                      Sell Tokens
+                      Sell Credits
                     </Button>
                   </div>
                     }
@@ -718,37 +802,45 @@ function App(props) {
 
               </Card>
             </div>
-            
-            <div style={{ padding: 8, marginTop: 32 }}>
-              <div>Vendor Token Balance:</div>
-              <Balance balance={vendorTokenBalance} fontSize={64} />
-            </div>
 
-            <div style={{ padding: 8 }}>
-              <div>Vendor ETH Balance:</div>
-              <Balance balance={vendorETHBalance} fontSize={64} /> ETH
+            <div style={{ padding: 8, marginTop: 32, width: 300, margin: "auto" }}>
+              <Card title="Mint New Projects" extra={<a href="#">code</a>}>
+                <div style={{ padding: 8 }}>
+                  <Input
+                    style={{ textAlign: "center" }}
+                    placeholder={"amount of projects to mint"}
+                    value={tokenMintAmount.value}
+                    onChange={e => {
+                      const newValue = e.target.value.startsWith(".") ? "0." : e.target.value;
+                      const mintAmount = {
+                        value: newValue,
+                        valid: /^\d*\.?\d+$/.test(newValue)
+                      }
+                      setTokenMintAmount(mintAmount);
+                    }}
+                  />
+                  <Balance balance={ethCostToPurchaseTokens} dollarMultiplier={price} />
+                </div>
+
+                <div style={{ padding: 8 }}>
+                  <Button
+                    type={"primary"}
+                    loading={minting}
+                    onClick={async () => {
+                      setMinting(true);
+                      await tx(writeContracts.YourToken.directorMint(tokenMintAmount.value, vendorAddress));
+                      setMinting(false);
+                    }}
+                    disabled={!tokenMintAmount.valid}
+                  >
+                    Mint Projects
+                  </Button>
+                </div>
+              </Card>
             </div>
 
             <div style={{ width: 500, margin: "auto", marginTop: 64 }}>
-              <div>Buy Token Events:</div>
-              <List
-                dataSource={buyTokensEvents}
-                renderItem={item => {
-                  return (
-                    <List.Item key={item.blockNumber + item.blockHash}>
-                      <Address value={item.args[0]} ensProvider={mainnetProvider} fontSize={16} /> paid
-                      <Balance balance={item.args[1]} />
-                      ETH to get
-                      <Balance balance={item.args[2]} />
-                      Tokens
-                    </List.Item>
-                  );
-                }}
-              />
-            </div>
-
-            <div style={{ width: 500, margin: "auto", marginTop: 64 }}>
-              <div>Sell Token Events:</div>
+              <div>Sell Credits Events:</div>
               <List
                 dataSource={sellTokensEvents}
                 renderItem={item => {
@@ -756,7 +848,7 @@ function App(props) {
                     <List.Item key={item.blockNumber + item.blockHash}>
                       <Address value={item.args[0]} ensProvider={mainnetProvider} fontSize={16} /> Sold
                       <Balance balance={item.args[1]} />
-                      tokens to get
+                      credits to get
                       <Balance balance={item.args[2]} />
                       ETH
                     </List.Item>
@@ -764,6 +856,36 @@ function App(props) {
                 }}
               />
             </div>
+            <div style={{ width: 500, margin: "auto", marginTop: 64 }}>
+              <div>Mint Projects Events:</div>
+              <List
+                dataSource={mintTokensEvents}
+                renderItem={item => {
+                  return (
+                    <List.Item key={item.blockNumber + item.blockHash}>
+                      <Address value={item.args[0]} ensProvider={mainnetProvider} fontSize={16} /> Minted
+                      <Balance balance={item.args[1]} />
+                      New Projects
+                    </List.Item>
+                  );
+                }}
+              />
+            </div>
+
+            <Divider/>EXCHANGE Display<Divider/>
+            <div style={{ padding: 8, marginTop: 32 }}>
+              <div>Total Projects Left:</div>
+              <Balance balance={vendorTokenBalance} fontSize={64} />
+            </div>
+
+            <div style={{ padding: 8 }}>
+              <div>Exchange ETH Balance:</div>
+              <Balance balance={vendorETHBalance} fontSize={64} /> ETH
+            </div>
+
+           
+
+            
 
             {/*
 
