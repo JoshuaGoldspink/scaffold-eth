@@ -7,7 +7,7 @@ import "./YourToken.sol";
 
 contract Vendor is Ownable {
 
-  address burnAddress = 0x0000000000000000000000000000000000000001;
+  address burnAddress = 0x000000000000000000000000000000000000dEaD;
 
   uint256 public tokensPerEth = 100;
 
@@ -32,7 +32,6 @@ contract Vendor is Ownable {
     payable(msg.sender).transfer(address(this).balance);
   } 
 
-
   function sellTokens(uint256 _amountToSell) public payable {
     yourToken.transferFrom(msg.sender, address(this), _amountToSell);
     payable(msg.sender).transfer(_amountToSell / tokensPerEth);
@@ -41,7 +40,7 @@ contract Vendor is Ownable {
 
 
   function burn(uint256 amountToBurn) public payable {
-    yourToken.transfer(0x000000000000000000000000000000000000dEaD, amountToBurn);
+    yourToken.transfer(burnAddress, amountToBurn);
     emit BurnTokens(msg.sender, amountToBurn);
   }
 

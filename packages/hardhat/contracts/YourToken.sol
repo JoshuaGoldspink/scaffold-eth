@@ -11,7 +11,6 @@ contract YourToken is ERC20 {
 
     event MintTokens(address minter, uint256 amountOfTokens);
 
-
     constructor() ERC20("Clearly", "CLRL") {
         _mint(msg.sender, 1000 * 10 ** 18);
     }
